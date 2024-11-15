@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Datalogger Configuration</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <h2>Datalogger Configuration</h2>
+    <form action="/configure" method="POST">
+        SSID: <input type="text" name="ssid"><br>
+        Password: <input type="password" name="password"><br>
+        <input type="submit" value="Save Configuration">
+    </form>
+
+    <h2>Real-time Data</h2>
+    <div>
+        <p>Last Pulse Time: <span id="pulseTime">Waiting...</span></p>
+    </div>
+    
+    <h2>Energy Consumption</h2>
+    <canvas id="energyChart" width="400" height="200"></canvas>
+
+    <script>
+        // Connect to the WebSocket server
+        const ws = new WebSocket('ws://' + location.hostname + '/ws');
+        ws.onmessage = function(event) {
+            document.getElementById("pulseTime").innerText = event.data;
+
+            // Update the chart with the new pulse time
+            let now = new Date();
+            addData(now, event.data);
+        };
+
+        // Chart.js graph setup
+        const ctx = document.getElementById('energyChart').getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Energy Consumption',
+                    data: [],
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    x: { type: 'time' },
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+
+        // Function to add data to the chart
+        function addData(label, data) {
+            chart.data.labels.push(label);
+            chart.data.datasets[0].data.push(data);
+            chart.update();
+        }
+    </script>
+</body>
+</html>
