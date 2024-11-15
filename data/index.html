@@ -3,63 +3,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Datalogger Configuration</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>WebSocket Timestamp Display with Button</title>
 </head>
 <body>
-    <h2>Datalogger Configuration</h2>
-    <form action="/configure" method="POST">
-        SSID: <input type="text" name="ssid"><br>
-        Password: <input type="password" name="password"><br>
-        <input type="submit" value="Save Configuration">
-    </form>
+    <h1>Timestamp Display from WebSocket</h1>
 
-    <h2>Real-time Data</h2>
+    <!-- Button to trigger WebSocket communication -->
+    <button id="connectButton">Connect to WebSocket</button>
+
+    <!-- Placeholder for the timestamp -->
     <div>
-        <p>Last Pulse Time: <span id="pulseTime">Waiting...</span></p>
+        <p>Last Timestamp: <span id="timestamp">Waiting...</span></p>
     </div>
-    
-    <h2>Energy Consumption</h2>
-    <canvas id="energyChart" width="400" height="200"></canvas>
 
     <script>
-        // Connect to the WebSocket server
-        const ws = new WebSocket('ws://' + location.hostname + '/ws');
-        ws.onmessage = function(event) {
-            document.getElementById("pulseTime").innerText = event.data;
+        let ws;
+        let reconnectInterval = 1000;  // Time in ms to wait before attempting reconnection
 
-            // Update the chart with the new pulse time
-            let now = new Date();
-            addData(now, event.data);
-        };
+        // Function to initiate WebSocket connection
+        function connectWebSocket() {
+            ws = new WebSocket('ws://' + location.hostname + '/ws');
 
-        // Chart.js graph setup
-        const ctx = document.getElementById('energyChart').getContext('2d');
-        const chart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: [],
-                datasets: [{
-                    label: 'Energy Consumption',
-                    data: [],
-                    borderColor: 'rgba(75, 192, 192, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                scales: {
-                    x: { type: 'time' },
-                    y: { beginAtZero: true }
-                }
+            // Event when WebSocket connection is opened
+            ws.onopen = function() {
+                console.log("WebSocket connection established.");
+                reconnectInterval = 1000;  // Reset the reconnect interval on successful connection
+            };
+
+            // Event when a message is received from the WebSocket server
+            ws.onmessage = function(event) {
+                const data = event.data;
+
+                // Update the timestamp on the page
+                document.getElementById('timestamp').innerText = new Date(parseInt(data)).toLocaleString();
+            };
+
+            // Event when WebSocket encounters an error
+            ws.onerror = function(error) {
+                console.error("WebSocket error:", error);
+            };
+
+            // Event when WebSocket connection is closed
+            ws.onclose = function() {
+                console.log("WebSocket connection closed. Attempting to reconnect...");
+                setTimeout(connectWebSocket, reconnectInterval); // Attempt reconnect after a delay
+                reconnectInterval = Math.min(reconnectInterval * 2, 10000); // Increase delay up to 10 seconds
+            };
+        }
+
+        // Attach event listener to the button to connect to WebSocket
+        document.getElementById('connectButton').addEventListener('click', function() {
+            // Check if WebSocket is already open before connecting
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                console.log("Connecting to WebSocket...");
+                connectWebSocket(); // Connect if not connected yet
+            } else {
+                console.log("WebSocket already connected.");
             }
         });
-
-        // Function to add data to the chart
-        function addData(label, data) {
-            chart.data.labels.push(label);
-            chart.data.datasets[0].data.push(data);
-            chart.update();
-        }
     </script>
 </body>
 </html>
